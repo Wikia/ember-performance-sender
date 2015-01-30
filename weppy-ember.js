@@ -10,8 +10,8 @@ var Utils = {
     adapters: {},
 
     log: function (msg) {
-        console.log('### LOG');
-        console.log(msg);
+        //console.log('### LOG');
+        //console.log(msg);
     },
 
     warn: function (msg) {
@@ -72,16 +72,6 @@ Utils.wrap = function (originalFunction, wrapper) {
             }
 
             return wrapper.apply(this, arguments);
-
-            //return Utils.__super__ = 'function' == typeof originalFunction ?
-            //    function () {
-            //        return this === Utils ?
-            //            0 === arguments.length ?
-            //                originalFunction.apply(self, args) :
-            //                originalFunction.apply(self, arguments) :
-            //            originalFunction.apply(this, arguments);
-            //    } :
-            //    Utils.__empty__, wrapper.apply(this, arguments);
         } finally {
             Utils.__super__ = currentSuper;
         }
@@ -336,7 +326,7 @@ var WeppyEmber = function (Utils, Ember, $) {
                 if ('function' == typeof callback) {
                     return Utils.wrap(callback, function () {
                         wrap.call(this, eventName);
-                        Utils.__super__()
+                        return Utils.__super__();
                     });
                 } else {
                     return callback;
