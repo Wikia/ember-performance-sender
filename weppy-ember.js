@@ -30,17 +30,19 @@ var Utils = {
     },
 
     slice: function (a) {
-        return Array.prototype.slice.call(a)
+        return Array.prototype.slice.call(a);
     },
 
-    aliasMethodChain: function (a, b, c, d) {
-        var e = a[b];
+    aliasMethodChain: function ($, method, label, wrapper) {
+        var e = $[method];
         if ('function' == typeof e) {
-            var f = '__' + b + '_without_' + c + '__',
-                g = '__' + b + '_with_' + c + '__';
-            a[f] = e, a[g] = a[b] = d
+            var f = '__' + method + '_without_' + label + '__',
+                g = '__' + method + '_with_' + label + '__';
+
+            $[f] = e;
+            $[g] = $[method] = wrapper;
         }
-        return a
+        return $;
     },
 
     __super__: function () {
@@ -50,18 +52,38 @@ var Utils = {
     }
 };
 
-Utils.wrap = function (b, c) {
+Utils.wrap = function (originalFunction, wrapper) {
     return function () {
-        var d = Utils.__super__,
-            e = this,
-            f = Utils.slice(arguments);
+        var currentSuper = Utils.__super__,
+            self = this,
+            args = Utils.slice(arguments);
+
         try {
-            return Utils.__super__ = 'function' == typeof b ? function () {
-                return this === Utils ? 0 === arguments.length ? b.apply(e, f) : b.apply(e, arguments) :
-                    b.apply(this, arguments)
-            } : Utils.__empty__, c.apply(this, arguments)
+            if ('function' == typeof originalFunction) {
+                Utils.__super__ = function () {
+                    return this === Utils ?
+                        0 === arguments.length ?
+                            originalFunction.apply(self, args) :
+                            originalFunction.apply(self, arguments) :
+                        originalFunction.apply(this, arguments);
+                }
+            } else {
+                Utils.__super__ = Utils.__empty__();
+            }
+
+            return wrapper.apply(this, arguments);
+
+            //return Utils.__super__ = 'function' == typeof originalFunction ?
+            //    function () {
+            //        return this === Utils ?
+            //            0 === arguments.length ?
+            //                originalFunction.apply(self, args) :
+            //                originalFunction.apply(self, arguments) :
+            //            originalFunction.apply(this, arguments);
+            //    } :
+            //    Utils.__empty__, wrapper.apply(this, arguments);
         } finally {
-            Utils.__super__ = d
+            Utils.__super__ = currentSuper;
         }
     }
 };
@@ -69,7 +91,7 @@ Utils.wrap = function (b, c) {
 var WeppyEmber = function (Utils, Ember, $) {
     'use strict';
     var EmberAdapter = {
-        VERSION: '0.0.1'
+        VERSION: '0.0.10'
     };
 
     if (Utils.plugins && Utils.plugins.Ember) {
@@ -105,7 +127,7 @@ var WeppyEmber = function (Utils, Ember, $) {
                 this.stopTime = Date.now();
                 this.pending = false;
             } else {
-                Utils.warn('[BUG] Attempted to stop an AJAX request twice.')
+                Utils.warn('[BUG] Attempted to stop an AJAX request twice.');
             }
         };
 
@@ -125,7 +147,14 @@ var WeppyEmber = function (Utils, Ember, $) {
             this.startTime = Date.now();
         };
 
-        traceViewRender.prototype.stop = traceAjaxRequest.prototype.stop;
+        traceViewRender.prototype.stop = function () {
+            if (this.pending) {
+                this.stopTime = Date.now();
+                this.pending = false;
+            } else {
+                Utils.warn('[BUG] Attempted to stop a view render twice.')
+            }
+        };
 
         traceViewRender.prototype.serialize = function (time) {
             if (this.pending === false) {
@@ -146,9 +175,9 @@ var WeppyEmber = function (Utils, Ember, $) {
         };
 
         trace.prototype.pause = function () {
-            for (var a = 1; a <= traceStack.length; a++) {
-                traceStack[traceStack.length - a] === this &&
-                traceStack.splice(traceStack.length - a, 1)
+            for (var i = 1; i <= traceStack.length; i++) {
+                traceStack[traceStack.length - i] === this &&
+                traceStack.splice(traceStack.length - i, 1);
             }
         };
 
@@ -165,8 +194,8 @@ var WeppyEmber = function (Utils, Ember, $) {
 
             this.pause();
 
-            for (var b = 0; b < this.events.length; b++) {
-                if (this.events[b].pending) return;
+            for (var i = 0; i < this.events.length; i++) {
+                if (this.events[i].pending) return;
             }
 
             this.stopTime = Date.now();
@@ -182,8 +211,8 @@ var WeppyEmber = function (Utils, Ember, $) {
             if (Utils.config.enableAjaxFilter === true) {
                 var ajaxRequestToTrace = false;
 
-                for (b = 0; b < this.events.length; b++)
-                    if (this.events[b] instanceof traceAjaxRequest) {
+                for (i = 0; i < this.events.length; i++)
+                    if (this.events[i] instanceof traceAjaxRequest) {
                         ajaxRequestToTrace = true;
                         break
                     }
@@ -201,18 +230,18 @@ var WeppyEmber = function (Utils, Ember, $) {
             this.url = window.location.hash || window.location.pathname;
 
             var metrics = {
-                bs: this.startTime,
-                bd: this.duration,
-                bu: this.url
+                startTime: this.startTime,
+                duration: this.duration,
+                url: this.url
             };
 
-            this.klass && this.klass.length && (metrics.bc = this.klass);
-            this.method && this.method.length && (metrics.bm = this.method);
-            this.pattern && this.pattern.length && (metrics.bp = this.pattern);
+            this.klass && this.klass.length && (metrics.klass = this.klass);
+            this.method && this.method.length && (metrics.method = this.method);
+            this.pattern && this.pattern.length && (metrics.pattern = this.pattern);
 
             var events = [];
-            for (b = 0; b < this.events.length; b++) {
-                events.push(this.events[b].serialize(this.startTime));
+            for (i = 0; i < this.events.length; i++) {
+                events.push(this.events[i].serialize(this.startTime));
             }
 
             Utils.send(events, metrics)
@@ -224,17 +253,17 @@ var WeppyEmber = function (Utils, Ember, $) {
                         segments = EmberRoute.get('router.router.recognizer.names')[routeName].segments,
                         listOfSegments = [];
 
-                    for (var e = 0; e < segments.length; e++) {
+                    for (var i = 0; i < segments.length; i++) {
                         var segment = null;
                         try {
-                            segment = segments[e].generate();
-                        } catch (g) {
-                            segment = ':' + segments[e].name;
+                            segment = segments[i].generate();
+                        } catch (err) {
+                            segment = ':' + segments[i].name;
                         }
                         segment && listOfSegments.push(segment);
                     }
                     return '/' + listOfSegments.join('/');
-                } catch (g) {
+                } catch (err) {
                     return '/';
                 }
             },
@@ -277,17 +306,18 @@ var WeppyEmber = function (Utils, Ember, $) {
                         //(subclass of Ember...)
                     'Ember' !== className.substr(13, 5)),
 
-                // TODO this was logging only route transitions for me. why?
-                //isEvent = this.constructor.prototype.hasOwnProperty(eventName),
+                    // TODO this caused logging only for route transitions for me. why?
+                    //isEvent = this.constructor.prototype.hasOwnProperty(eventName),
                     isEvent = true,
 
-                    magicCondition = !getLastTraceItem() &&
+                    shouldTrace = !getLastTraceItem() &&
                         isNotEmberClass &&
                         isEvent;
 
-                if (magicCondition) {
+                if (shouldTrace) {
                     new trace(this.constructor.toString(), eventName);
                 }
+
                 return this._super.apply(this, Utils.slice(arguments));
             }
         });
@@ -313,62 +343,43 @@ var WeppyEmber = function (Utils, Ember, $) {
                 }
             };
 
-        if ('undefined' == typeof Ember.ActionHandler) {
-            Ember.Route.reopen({
-                init: function () {
-                    var a = this._super();
-                    for (var eventName in this.events) {
-                        this.events.hasOwnProperty(eventName) &&
-                        (this.events[eventName] = wrapEvent(eventName, this.events[eventName]));
+        Ember.ActionHandler.reopen({
+            willMergeMixin: function (props) {
+                var eventName,
+                    parent = this._super(props);
+
+                if (props._actions) {
+                    for (eventName in props._actions) {
+                        props._actions.hasOwnProperty(eventName) &&
+                        (props._actions[eventName] = wrapEvent(eventName, props._actions[eventName]));
                     }
-                    return a;
-                }
-            });
-
-            Ember.ControllerMixin.reopen({
-                send: function (b) {
-                    return this[b] && wrap.call(this, b), this._super.apply(this, Utils.slice(arguments))
-                }
-            });
-        } else {
-            Ember.ActionHandler.reopen({
-                willMergeMixin: function (props) {
-                    var eventName,
-                        parent = this._super(props);
-
-                    if (props._actions) {
-                        for (eventName in props._actions) {
-                            props._actions.hasOwnProperty(eventName) &&
-                            (props._actions[eventName] = wrapEvent(eventName, props._actions[eventName]));
-                        }
-                    } else if (props.events) {
-                        for (eventName in props.events) {
-                            props.events.hasOwnProperty(eventName) &&
-                            (props.events[eventName] = wrapEvent(eventName, props.events[eventName]));
-                        }
+                } else if (props.events) {
+                    for (eventName in props.events) {
+                        props.events.hasOwnProperty(eventName) &&
+                        (props.events[eventName] = wrapEvent(eventName, props.events[eventName]));
                     }
-                    return parent;
                 }
-            });
-        }
+                return parent;
+            }
+        });
 
-        var n = new RegExp('<(?:\\(subclass of )?(.*?)\\)?:.*>');
+        var subclassPattern = new RegExp('<(?:\\(subclass of )?(.*?)\\)?:.*>');
         Ember.subscribe('render.view', {
-            before: function (a, b, c) {
+            before: function (eventName, time, container) {
                 if (getLastTraceItem()) {
-                    var parentClass = c.object.match(n)[1];
+                    var parentClass = container.object.match(subclassPattern)[1];
                     if ('Ember' !== parentClass.substr(0, 5) && 'LinkView' !== parentClass) {
                         return new traceViewRender(parentClass);
                     }
                 }
             },
-            after: function (a, b, c, d) {
-                d && d.stop();
+            after: function (eventName, time, container, tracer) {
+                tracer && tracer.stop();
             }
         });
 
-        Ember.run.backburner.options.onEnd = Utils.wrap(Ember.run.backburner.options.onEnd, function (b, c) {
-            if (!c && traceStack.length) {
+        Ember.run.backburner.options.onEnd = Utils.wrap(Ember.run.backburner.options.onEnd, function (current, next) {
+            if (!next && traceStack.length) {
                 for (var d = 0; d < traceStack.length; d++) {
                     traceStack[d].finalize();
                 }
@@ -378,18 +389,30 @@ var WeppyEmber = function (Utils, Ember, $) {
 
         Utils.aliasMethodChain($, 'ajax', 'instrumentation', Utils.wrap($.ajax, function () {
             if (getLastTraceItem()) {
-                var b = arguments[1] || arguments[0],
-                    c = b.type || 'GET',
-                    d = b.url || arguments[0];
-                'string' == typeof b && (b = {});
-                var e = new traceAjaxRequest(c, d);
-                return b.success = Utils.wrap(b.success, function () {
-                    return e.trace.resume(), e.stop(), Utils.__super__()
-                }), b.error = Utils.wrap(b.error, function () {
-                    return e.trace.resume(), e.stop(), Utils.__super__()
-                }), b.url = d, Utils.__super__(b)
+                var request = arguments[1] || arguments[0],
+                    type = request.type || 'GET',
+                    url = request.url || arguments[0];
+
+                'string' == typeof request && (request = {});
+                var tracer = new traceAjaxRequest(type, url);
+
+                request.success = Utils.wrap(request.success, function () {
+                    tracer.trace.resume();
+                    tracer.stop();
+                    return Utils.__super__();
+                });
+
+                request.error = Utils.wrap(request.error, function () {
+                    tracer.trace.resume();
+                    tracer.stop();
+                    return Utils.__super__();
+                });
+
+                request.url = url;
+
+                return Utils.__super__(request);
             }
-            return Utils.__super__()
+            return Utils.__super__();
         }));
 
         Utils.adapters.Ember = EmberAdapter;
