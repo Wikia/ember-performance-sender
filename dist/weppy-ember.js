@@ -42,7 +42,7 @@ function decorate(orig, decorator) {
             throw 'decorator error';
         }
         return (typeof orig === 'function' ? orig : function () {
-        }).apply(this, ret || arguments);
+        }).apply(this, arguments);
     };
 }
 var WeppyEmber = function (Utils, Ember, $) {
@@ -301,7 +301,6 @@ var WeppyEmber = function (Utils, Ember, $) {
                     tracer.stop();
                 });
                 request.url = url;
-                return [request];
             }
         }));
         Utils.adapters.Ember = EmberAdapter;
