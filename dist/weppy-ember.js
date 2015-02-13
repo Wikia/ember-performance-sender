@@ -1,3 +1,4 @@
+console.log('REPLACING AJAX TRACER');
 var Utils = {
     loaded: true,
     enabled: true,
@@ -32,6 +33,36 @@ var Utils = {
         return $;
     }
 };
+var traceStack = [];
+function getLastTraceItem() {
+    return traceStack[traceStack.length - 1];
+}
+var AjaxTrace = (function () {
+    function AjaxTrace(method, url) {
+        this.method = method;
+        this.url = url;
+        this.pending = true;
+        this.trace = getLastTraceItem();
+        this.trace && this.trace.events.push(this);
+        this.startTime = Date.now();
+    }
+    AjaxTrace.prototype.stop = function () {
+        if (this.pending) {
+            this.stopTime = Date.now();
+            this.pending = false;
+        }
+        else {
+            Utils.warn('[BUG] Attempted to stop an AJAX request twice.');
+        }
+    };
+    AjaxTrace.prototype.serialize = function (time) {
+        if (this.pending === false) {
+            time = time || 0;
+            return ['a', this.method, this.url, this.startTime - time, this.stopTime - this.startTime];
+        }
+    };
+    return AjaxTrace;
+})();
 function decorate(orig, decorator) {
     return function () {
         var ret;
@@ -39,7 +70,7 @@ function decorate(orig, decorator) {
             ret = decorator.apply(this, arguments);
         }
         catch (e) {
-            throw 'decorator error';
+            throw e;
         }
         return (typeof orig === 'function' ? orig : function () {
         }).apply(this, arguments);
@@ -63,31 +94,6 @@ var WeppyEmber = function (Utils, Ember, $) {
         Utils.log('Initializing weppy-ember v' + EmberAdapter.VERSION);
         Utils.config.enableAjaxFilter = Utils.config.enableAjaxFilter || false;
         Utils.config.minDuration = Utils.config.minDuration || 50;
-        var traceStack = [], getLastTraceItem = function () {
-            return traceStack[traceStack.length - 1];
-        }, traceAjaxRequest = function (method, url) {
-            this.method = method;
-            this.url = url;
-            this.pending = true;
-            this.trace = getLastTraceItem();
-            this.trace && this.trace.events.push(this);
-            this.startTime = Date.now();
-        };
-        traceAjaxRequest.prototype.stop = function () {
-            if (this.pending) {
-                this.stopTime = Date.now();
-                this.pending = false;
-            }
-            else {
-                Utils.warn('[BUG] Attempted to stop an AJAX request twice.');
-            }
-        };
-        traceAjaxRequest.prototype.serialize = function (time) {
-            if (this.pending === false) {
-                time = time || 0;
-                return ['a', this.method, this.url, this.startTime - time, this.stopTime - this.startTime];
-            }
-        };
         var traceViewRender = function (viewName) {
             this.viewName = viewName;
             this.pending = true;
@@ -148,7 +154,7 @@ var WeppyEmber = function (Utils, Ember, $) {
             if (Utils.config.enableAjaxFilter === true) {
                 var ajaxRequestToTrace = false;
                 for (i = 0; i < this.events.length; i++)
-                    if (this.events[i] instanceof traceAjaxRequest) {
+                    if (this.events[i] instanceof AjaxTrace) {
                         ajaxRequestToTrace = true;
                         break;
                     }
@@ -289,7 +295,7 @@ var WeppyEmber = function (Utils, Ember, $) {
             if (getLastTraceItem()) {
                 var request = arguments[1] || arguments[0], type = request.type || 'GET', url = request.url || arguments[0];
                 'string' == typeof request && (request = {});
-                var tracer = new traceAjaxRequest(type, url);
+                var tracer = new AjaxTrace(type, url);
                 request.success = decorate(request.success, function () {
                     debugger;
                     tracer.trace.resume();
