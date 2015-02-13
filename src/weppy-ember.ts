@@ -1,4 +1,4 @@
-console.log('REPLACING AJAX TRACER')
+console.log('REPLACING TRACER')
 var Utils = {
 	loaded: true,
 	enabled: true,
@@ -47,6 +47,103 @@ var traceStack = [];
 function getLastTraceItem () {
 	return traceStack[traceStack.length - 1];
 }
+
+class Trace {
+	duration: number;
+	events: Trace[];
+	finalized: boolean;
+	klass: string;
+	method: string;
+	pattern: RegExp;
+	pending: boolean;
+	startTime: number;
+	stopTime: number;
+	url: string;
+
+	constructor (klass, method, pattern?) {
+		this.klass = klass;
+		this.method = method;
+		this.pattern = pattern;
+		this.events = [];
+		this.finalized = false;
+
+		traceStack.push(this);
+		this.startTime = Date.now();
+	}
+
+	pause () {
+		for (var i = 1; i <= traceStack.length; i++) {
+			traceStack[traceStack.length - i] === this &&
+			traceStack.splice(traceStack.length - i, 1);
+		}
+	}
+
+	resume () {
+		this.pause();
+		traceStack.push(this);
+	}
+
+	finalize () {
+		if (this.finalized === !0) {
+			Utils.warn('[BUG] Attempted to finalize a trace twice.');
+			return;
+		}
+
+		this.pause();
+
+		for (var i = 0; i < this.events.length; i++) {
+			if (this.events[i].pending) return;
+		}
+
+		this.stopTime = Date.now();
+		this.finalized = !0;
+		this.duration = this.stopTime - this.startTime;
+
+		if (this.duration < (Utils.config.minDuration || 1)) {
+			Utils.log('Dropped: ' + this.klass + '.' + this.method + ' (' + this.pattern + '), took ' +
+			this.duration + 'ms. (minDuration is ' + Utils.config.minDuration + 'ms)');
+			return;
+		}
+
+		if (Utils.config.enableAjaxFilter === true) {
+			var ajaxRequestToTrace = false;
+
+			for (i = 0; i < this.events.length; i++)
+				if (this.events[i] instanceof AjaxTrace) {
+					ajaxRequestToTrace = true;
+					break
+				}
+
+			if (!ajaxRequestToTrace) {
+				Utils.log('Dropped: ' + this.klass + '.' + this.method + ' (' + this.pattern + '), took ' +
+				this.duration + 'ms. (enableAjaxFilter is true)');
+				return;
+			}
+		}
+
+		Utils.log('Sending: ' + this.klass + '.' + this.method + ' (' + this.pattern + '), took ' + this.duration +
+		'ms.');
+
+		this.url = window.location.hash || window.location.pathname;
+
+		var metrics = {
+			startTime: this.startTime,
+			duration: this.duration,
+			url: this.url
+		};
+
+		this.klass && this.klass.length && (metrics.klass = this.klass);
+		this.method && this.method.length && (metrics.method = this.method);
+		this.pattern && this.pattern.length && (metrics.pattern = this.pattern);
+
+		var events = [];
+		for (i = 0; i < this.events.length; i++) {
+			events.push(this.events[i].serialize(this.startTime));
+		}
+
+		Utils.send(events, metrics)
+	}
+}
 class AjaxTrace {
 	method: string;
 	url: string;
@@ -76,6 +173,38 @@ class AjaxTrace {
 		if (this.pending === false) {
 			time = time || 0;
 			return ['a', this.method, this.url, this.startTime - time, this.stopTime - this.startTime];
+		}
+	}
+}
+
+class ViewRenderTrace {
+	viewName: string;
+	pending: boolean;
+	trace: any;
+	startTime: number;
+	stopTime: number;
+	constructor (viewName) {
+		this.viewName = viewName;
+		this.pending = true;
+		this.trace = getLastTraceItem();
+
+		this.trace && this.trace.events.push(this);
+		this.startTime = Date.now();
+	}
+
+	stop () {
+		if (this.pending) {
+			this.stopTime = Date.now();
+			this.pending = false;
+		} else {
+			Utils.warn('[BUG] Attempted to stop a view render twice.')
+		}
+	}
+
+	serialize (time) {
+		if (this.pending === false) {
+			time = time || 0;
+			return ['r', this.viewName, this.startTime - time, this.stopTime - this.startTime];
 		}
 	}
 }
@@ -112,115 +241,6 @@ var WeppyEmber = function (Utils, Ember, $) {
 		Utils.config.enableAjaxFilter = Utils.config.enableAjaxFilter || false;
 		Utils.config.minDuration = Utils.config.minDuration || 50;
 
-		var traceViewRender = function (viewName) {
-			this.viewName = viewName;
-			this.pending = true;
-			this.trace = getLastTraceItem();
-
-			this.trace && this.trace.events.push(this);
-			this.startTime = Date.now();
-		};
-
-		traceViewRender.prototype.stop = function () {
-			if (this.pending) {
-				this.stopTime = Date.now();
-				this.pending = false;
-			} else {
-				Utils.warn('[BUG] Attempted to stop a view render twice.')
-			}
-		};
-
-		traceViewRender.prototype.serialize = function (time) {
-			if (this.pending === false) {
-				time = time || 0;
-				return ['r', this.viewName, this.startTime - time, this.stopTime - this.startTime];
-			}
-		};
-
-		var trace = function (klass, method, pattern) {
-			this.klass = klass;
-			this.method = method;
-			this.pattern = pattern;
-			this.events = [];
-			this.finalized = false;
-
-			traceStack.push(this);
-			this.startTime = Date.now();
-		};
-
-		trace.prototype.pause = function () {
-			for (var i = 1; i <= traceStack.length; i++) {
-				traceStack[traceStack.length - i] === this &&
-				traceStack.splice(traceStack.length - i, 1);
-			}
-		};
-
-		trace.prototype.resume = function () {
-			this.pause();
-			traceStack.push(this);
-		};
-
-		trace.prototype.finalize = function () {
-			if (this.finalized === !0) {
-				Utils.warn('[BUG] Attempted to finalize a trace twice.');
-				return;
-			}
-
-			this.pause();
-
-			for (var i = 0; i < this.events.length; i++) {
-				if (this.events[i].pending) return;
-			}
-
-			this.stopTime = Date.now();
-			this.finalized = !0;
-			this.duration = this.stopTime - this.startTime;
-
-			if (this.duration < (Utils.config.minDuration || 1)) {
-				Utils.log('Dropped: ' + this.klass + '.' + this.method + ' (' + this.pattern + '), took ' +
-				this.duration + 'ms. (minDuration is ' + Utils.config.minDuration + 'ms)');
-				return;
-			}
-
-			if (Utils.config.enableAjaxFilter === true) {
-				var ajaxRequestToTrace = false;
-
-				for (i = 0; i < this.events.length; i++)
-					if (this.events[i] instanceof AjaxTrace) {
-						ajaxRequestToTrace = true;
-						break
-					}
-
-				if (!ajaxRequestToTrace) {
-					Utils.log('Dropped: ' + this.klass + '.' + this.method + ' (' + this.pattern + '), took ' +
-					this.duration + 'ms. (enableAjaxFilter is true)');
-					return;
-				}
-			}
-
-			Utils.log('Sending: ' + this.klass + '.' + this.method + ' (' + this.pattern + '), took ' + this.duration +
-			'ms.');
-
-			this.url = window.location.hash || window.location.pathname;
-
-			var metrics = {
-				startTime: this.startTime,
-				duration: this.duration,
-				url: this.url
-			};
-
-			this.klass && this.klass.length && (metrics.klass = this.klass);
-			this.method && this.method.length && (metrics.method = this.method);
-			this.pattern && this.pattern.length && (metrics.pattern = this.pattern);
-
-			var events = [];
-			for (i = 0; i < this.events.length; i++) {
-				events.push(this.events[i].serialize(this.startTime));
-			}
-
-			Utils.send(events, metrics)
-		};
-
 		var getRoutePattern = function (EmberRoute) {
 				try {
 					var routeName = EmberRoute.get('routeName'),
@@ -250,7 +270,7 @@ var WeppyEmber = function (Utils, Ember, $) {
 					lastTrace.method = void 0;
 					return lastTrace.pattern = pattern;
 				} else {
-					new trace(this.constructor.toString(), void 0, pattern);
+					new Trace(this.constructor.toString(), void 0, pattern);
 					return this._super.apply(this, arguments);
 				}
 			};
@@ -289,7 +309,7 @@ var WeppyEmber = function (Utils, Ember, $) {
 						isEvent;
 
 				if (shouldTrace) {
-					new trace(this.constructor.toString(), eventName);
+					new Trace(this.constructor.toString(), eventName);
 				}
 
 				return this._super.apply(this, arguments);
@@ -303,7 +323,7 @@ var WeppyEmber = function (Utils, Ember, $) {
 					'undefined' == typeof traceItem.pattern && (traceItem.klass = this.constructor.toString());
 					traceItem.method = method;
 				} else {
-					new trace(this.constructor.toString(), method);
+					new Trace(this.constructor.toString(), method);
 				}
 			},
 			wrapEvent = function (eventName, callback) {
@@ -342,7 +362,7 @@ var WeppyEmber = function (Utils, Ember, $) {
 				if (getLastTraceItem()) {
 					var parentClass = container.object.match(subclassPattern)[1];
 					if ('Ember' !== parentClass.substr(0, 5) && 'LinkView' !== parentClass) {
-						return new traceViewRender(parentClass);
+						return new ViewRenderTrace(parentClass);
 					}
 				}
 			},
@@ -387,5 +407,5 @@ var WeppyEmber = function (Utils, Ember, $) {
 		Utils.adapters.Ember = EmberAdapter;
 		Utils.log('Sucessfully loaded weppy-ember v' + EmberAdapter.VERSION);
 	}
-}(Utils, Ember, $);
+} (Utils, Ember, $);
 
