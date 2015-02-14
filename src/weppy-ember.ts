@@ -1,4 +1,13 @@
-console.log('REPLACING TRACER')
+console.log('V2')
+
+interface MetricsReport {
+	startTime: number;
+	duration: number;
+	url: string;
+	klass?: string;
+	method?: string;
+	pattern?: string;
+}
 var Utils = {
 	loaded: true,
 	enabled: true,
@@ -44,17 +53,82 @@ var Utils = {
 };
 
 var traceStack = [];
+
 function getLastTraceItem () {
 	return traceStack[traceStack.length - 1];
 }
 
-class Trace {
+class BaseTrace {
+	pending: boolean;
+	startTime: number;
+	stopTime: number;
+	trace: any;
+
+	stop () {
+		if (this.pending) {
+			this.stopTime = Date.now();
+			this.pending = false;
+		} else {
+			Utils.warn('[BUG] ' + this.constructor['name'] + ': Attempted to stop a view render twice.')
+		}
+	}
+
+	serialize (time: number = 0, ...additionalParams: string[]): any[] {
+		if (this.pending === false) {
+			var serialized = [this.constructor['name'],  this.startTime - time, this.stopTime - this.startTime];
+			if (additionalParams.length) {
+				serialized = serialized.concat(additionalParams);
+			}
+			return serialized;
+		}
+	}
+}
+
+class AjaxTrace extends BaseTrace {
+	method: string;
+	url: string;
+
+	constructor (method, url) {
+		this.method = method;
+		this.url = url;
+		this.pending = true;
+		this.trace = getLastTraceItem();
+		this.trace && this.trace.events.push(this);
+		this.startTime = Date.now();
+
+		super();
+	}
+
+	serialize (time: number): any[] {
+		return super.serialize(time, this.method, this.url);
+	}
+}
+
+class ViewRenderTrace extends BaseTrace {
+	viewName: string;
+
+	constructor (viewName) {
+		this.viewName = viewName;
+		this.pending = true;
+		this.trace = getLastTraceItem();
+		this.trace && this.trace.events.push(this);
+		this.startTime = Date.now();
+
+		super();
+	}
+
+	serialize (time: number): any[] {
+		return super.serialize(time, this.viewName);
+	}
+}
+
+class Trace extends BaseTrace {
 	duration: number;
 	events: Trace[];
 	finalized: boolean;
 	klass: string;
 	method: string;
-	pattern: RegExp;
+	pattern: string;
 	pending: boolean;
 	startTime: number;
 	stopTime: number;
@@ -66,9 +140,13 @@ class Trace {
 		this.pattern = pattern;
 		this.events = [];
 		this.finalized = false;
-
 		traceStack.push(this);
 		this.startTime = Date.now();
+		super();
+	}
+
+	serialize (time: number): any[] {
+		return super.serialize(time, this.klass, this.method, this.url);
 	}
 
 	pause () {
@@ -126,7 +204,7 @@ class Trace {
 
 		this.url = window.location.hash || window.location.pathname;
 
-		var metrics = {
+		var metrics: MetricsReport = {
 			startTime: this.startTime,
 			duration: this.duration,
 			url: this.url
@@ -142,70 +220,6 @@ class Trace {
 		}
 
 		Utils.send(events, metrics)
-	}
-}
-class AjaxTrace {
-	method: string;
-	url: string;
-	pending: boolean;
-	trace: any;
-	startTime: number;
-	stopTime: number;
-	constructor (method, url) {
-		this.method = method;
-		this.url = url;
-		this.pending = true;
-		this.trace = getLastTraceItem();
-		this.trace && this.trace.events.push(this);
-		this.startTime = Date.now();
-	}
-
-	stop () {
-		if (this.pending) {
-			this.stopTime = Date.now();
-			this.pending = false;
-		} else {
-			Utils.warn('[BUG] Attempted to stop an AJAX request twice.');
-		}
-	}
-
-	serialize (time) {
-		if (this.pending === false) {
-			time = time || 0;
-			return ['a', this.method, this.url, this.startTime - time, this.stopTime - this.startTime];
-		}
-	}
-}
-
-class ViewRenderTrace {
-	viewName: string;
-	pending: boolean;
-	trace: any;
-	startTime: number;
-	stopTime: number;
-	constructor (viewName) {
-		this.viewName = viewName;
-		this.pending = true;
-		this.trace = getLastTraceItem();
-
-		this.trace && this.trace.events.push(this);
-		this.startTime = Date.now();
-	}
-
-	stop () {
-		if (this.pending) {
-			this.stopTime = Date.now();
-			this.pending = false;
-		} else {
-			Utils.warn('[BUG] Attempted to stop a view render twice.')
-		}
-	}
-
-	serialize (time) {
-		if (this.pending === false) {
-			time = time || 0;
-			return ['r', this.viewName, this.startTime - time, this.stopTime - this.startTime];
-		}
 	}
 }
 
@@ -407,5 +421,4 @@ var WeppyEmber = function (Utils, Ember, $) {
 		Utils.adapters.Ember = EmberAdapter;
 		Utils.log('Sucessfully loaded weppy-ember v' + EmberAdapter.VERSION);
 	}
-} (Utils, Ember, $);
-
+} (Utils, window['Ember'], window['jQuery']);

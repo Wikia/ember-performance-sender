@@ -1,4 +1,10 @@
-console.log('REPLACING TRACER');
+var __extends = this.__extends || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    __.prototype = b.prototype;
+    d.prototype = new __();
+};
+console.log('V2');
 var Utils = {
     loaded: true,
     enabled: true,
@@ -37,7 +43,67 @@ var traceStack = [];
 function getLastTraceItem() {
     return traceStack[traceStack.length - 1];
 }
-var Trace = (function () {
+var BaseTrace = (function () {
+    function BaseTrace() {
+    }
+    BaseTrace.prototype.stop = function () {
+        if (this.pending) {
+            this.stopTime = Date.now();
+            this.pending = false;
+        }
+        else {
+            Utils.warn('[BUG] ' + this.constructor['name'] + ': Attempted to stop a view render twice.');
+        }
+    };
+    BaseTrace.prototype.serialize = function (time) {
+        if (time === void 0) { time = 0; }
+        var additionalParams = [];
+        for (var _i = 1; _i < arguments.length; _i++) {
+            additionalParams[_i - 1] = arguments[_i];
+        }
+        if (this.pending === false) {
+            var serialized = [this.constructor['name'], this.startTime - time, this.stopTime - this.startTime];
+            if (additionalParams.length) {
+                serialized = serialized.concat(additionalParams);
+            }
+            return serialized;
+        }
+    };
+    return BaseTrace;
+})();
+var AjaxTrace = (function (_super) {
+    __extends(AjaxTrace, _super);
+    function AjaxTrace(method, url) {
+        this.method = method;
+        this.url = url;
+        this.pending = true;
+        this.trace = getLastTraceItem();
+        this.trace && this.trace.events.push(this);
+        this.startTime = Date.now();
+        _super.call(this);
+    }
+    AjaxTrace.prototype.serialize = function (time) {
+        return _super.prototype.serialize.call(this, time, this.method, this.url);
+    };
+    return AjaxTrace;
+})(BaseTrace);
+var ViewRenderTrace = (function (_super) {
+    __extends(ViewRenderTrace, _super);
+    function ViewRenderTrace(viewName) {
+        this.viewName = viewName;
+        this.pending = true;
+        this.trace = getLastTraceItem();
+        this.trace && this.trace.events.push(this);
+        this.startTime = Date.now();
+        _super.call(this);
+    }
+    ViewRenderTrace.prototype.serialize = function (time) {
+        return _super.prototype.serialize.call(this, time, this.viewName);
+    };
+    return ViewRenderTrace;
+})(BaseTrace);
+var Trace = (function (_super) {
+    __extends(Trace, _super);
     function Trace(klass, method, pattern) {
         this.klass = klass;
         this.method = method;
@@ -46,7 +112,11 @@ var Trace = (function () {
         this.finalized = false;
         traceStack.push(this);
         this.startTime = Date.now();
+        _super.call(this);
     }
+    Trace.prototype.serialize = function (time) {
+        return _super.prototype.serialize.call(this, time, this.klass, this.method, this.url);
+    };
     Trace.prototype.pause = function () {
         for (var i = 1; i <= traceStack.length; i++) {
             traceStack[traceStack.length - i] === this && traceStack.splice(traceStack.length - i, 1);
@@ -102,58 +172,7 @@ var Trace = (function () {
         Utils.send(events, metrics);
     };
     return Trace;
-})();
-var AjaxTrace = (function () {
-    function AjaxTrace(method, url) {
-        this.method = method;
-        this.url = url;
-        this.pending = true;
-        this.trace = getLastTraceItem();
-        this.trace && this.trace.events.push(this);
-        this.startTime = Date.now();
-    }
-    AjaxTrace.prototype.stop = function () {
-        if (this.pending) {
-            this.stopTime = Date.now();
-            this.pending = false;
-        }
-        else {
-            Utils.warn('[BUG] Attempted to stop an AJAX request twice.');
-        }
-    };
-    AjaxTrace.prototype.serialize = function (time) {
-        if (this.pending === false) {
-            time = time || 0;
-            return ['a', this.method, this.url, this.startTime - time, this.stopTime - this.startTime];
-        }
-    };
-    return AjaxTrace;
-})();
-var ViewRenderTrace = (function () {
-    function ViewRenderTrace(viewName) {
-        this.viewName = viewName;
-        this.pending = true;
-        this.trace = getLastTraceItem();
-        this.trace && this.trace.events.push(this);
-        this.startTime = Date.now();
-    }
-    ViewRenderTrace.prototype.stop = function () {
-        if (this.pending) {
-            this.stopTime = Date.now();
-            this.pending = false;
-        }
-        else {
-            Utils.warn('[BUG] Attempted to stop a view render twice.');
-        }
-    };
-    ViewRenderTrace.prototype.serialize = function (time) {
-        if (this.pending === false) {
-            time = time || 0;
-            return ['r', this.viewName, this.startTime - time, this.stopTime - this.startTime];
-        }
-    };
-    return ViewRenderTrace;
-})();
+})(BaseTrace);
 function decorate(orig, decorator) {
     return function () {
         var ret;
@@ -318,4 +337,4 @@ var WeppyEmber = function (Utils, Ember, $) {
         Utils.adapters.Ember = EmberAdapter;
         Utils.log('Sucessfully loaded weppy-ember v' + EmberAdapter.VERSION);
     }
-}(Utils, Ember, $);
+}(Utils, window['Ember'], window['jQuery']);
