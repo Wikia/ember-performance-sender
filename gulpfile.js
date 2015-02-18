@@ -7,13 +7,14 @@ var gulp = require('gulp'),
 
 gulp.task('compile', function () {
 	return gulp.src(source)
+        .pipe(wrap('module WeppyEmber { <%= contents %> }'))
 		.pipe(ts()).js
 		.pipe(gulp.dest(destination));
 });
 
 gulp.task('compileAMD', function () {
 	return gulp.src(source)
-		.pipe(wrap('<%= contents %> export = WeppyEmber;'))
+		.pipe(wrap('export module WeppyEmber {<%= contents %> }'))
 		.pipe(ts({module: 'amd'})).js
 		.pipe(rename(function (path) {
 			path.basename += '.amd';
@@ -23,7 +24,7 @@ gulp.task('compileAMD', function () {
 
 gulp.task('compileCommonJS', function () {
 	return gulp.src(source)
-		.pipe(wrap('<%= contents %> export = WeppyEmber;'))
+		.pipe(wrap('export module WeppyEmber {<%= contents %> }'))
 		.pipe(ts({module: 'commonjs'})).js
 		.pipe(rename(function (path) {
 			path.basename += '.cjs';
