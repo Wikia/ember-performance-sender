@@ -15,7 +15,7 @@ module WeppyEmber {
 		log?: (message: string) => void;
 		minDuration: number;
 		send: (events: any[], metrics: MetricsReport) => void;
-		warn?: (message: string ) => void;
+		warn?: (message: string) => void;
 	}
 
 	export var VERSION: string = '0.1.0';
@@ -37,14 +37,14 @@ module WeppyEmber {
 		return traceStack[traceStack.length - 1];
 	}
 
-	function getConfigMethod(method, ...args) {
+	function getConfigMethod (method, ...args) {
 		if (config.enableLogging && typeof config[method] === 'function') {
 			return config[method].apply(this, args);
 		}
-		console.warn('Method ' + method + 'not found');
+		console.warn('Method ' + method + ' not found');
 	}
 
-	function decorate(orig, decorator) {
+	function decorate (orig, decorator) {
 		return function () {
 			var ret;
 			try {
@@ -172,7 +172,7 @@ module WeppyEmber {
 		}
 
 		finalize () {
-			if (this.finalized === !0) {
+			if (this.finalized) {
 				getConfigMethod('warn', '[BUG] Attempted to finalize a trace twice.');
 				return;
 			}
@@ -184,7 +184,7 @@ module WeppyEmber {
 			}
 
 			this.stopTime = Date.now();
-			this.finalized = !0;
+			this.finalized = true;
 			this.duration = this.stopTime - this.startTime;
 
 			if (this.duration < (config.minDuration || 1)) {
