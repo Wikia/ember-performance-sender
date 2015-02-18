@@ -337,4 +337,4 @@ var WeppyEmber;
     }
     WeppyEmber.initialize = initialize;
     ;
-})(WeppyEmber || (WeppyEmber = {}));
+})(WeppyEmber = exports.WeppyEmber || (exports.WeppyEmber = {}));
