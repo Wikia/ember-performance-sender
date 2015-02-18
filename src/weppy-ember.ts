@@ -57,13 +57,13 @@ module WeppyEmber {
 	}
 
 	function aliasMethodChain ($, method, label, wrapper) {
-		var e = $[method];
-		if ('function' == typeof e) {
-			var f = '__' + method + '_without_' + label + '__',
-				g = '__' + method + '_with_' + label + '__';
+		var originalMethod  = $[method];
+		if ('function' == typeof originalMethod) {
+			var methodWithout  = '__' + method + '_without_' + label + '__',
+				methodWith  = '__' + method + '_with_' + label + '__';
 
-			$[f] = e;
-			$[g] = $[method] = wrapper;
+			$[methodWithout] = originalMethod;
+			$[methodWith] = $[method] = wrapper;
 		}
 		return $;
 	}
