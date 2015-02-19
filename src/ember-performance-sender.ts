@@ -431,7 +431,7 @@ module EmPerfSender {
 			});
 
 			aliasMethodChain($, 'ajax', 'instrumentation', decorate($.ajax, ajaxDecorator));
-            loaded = true;
+			loaded = true;
 		}
 	};
 }
