@@ -383,22 +383,22 @@ module EmPerfSender {
 			Ember.ActionHandler.reopen({
 				willMergeMixin (props) {
 					var eventName,
-						parent = this._super(props);
+						nextSuper = this._super(props);
 
 					if (props._actions) {
 						for (eventName in props._actions) {
 						if (props._actions.hasOwnProperty(eventName)) {
-							(props._actions[eventName] = wrapEvent(eventName, props._actions[eventName]));
+							props._actions[eventName] = wrapEvent.apply(this, [eventName, props._actions[eventName]]);
 						}
 						}
 					} else if (props.events) {
 						for (eventName in props.events) {
 							if (props.events.hasOwnProperty(eventName)) {
-								(props.events[eventName] = wrapEvent(eventName, props.events[eventName]));
+								props.events[eventName] = wrapEvent.apply(this, [eventName, props.events[eventName]]);
 							}
 						}
 					}
-					return parent;
+					return nextSuper;
 				}
 			});
 
