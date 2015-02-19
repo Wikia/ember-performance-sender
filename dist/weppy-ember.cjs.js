@@ -42,7 +42,9 @@ var WeppyEmber;
                 catch (err) {
                     segment = ':' + segments[i].name;
                 }
-                segment && listOfSegments.push(segment);
+                if (segment) {
+                    listOfSegments.push(segment);
+                }
             }
             return '/' + listOfSegments.join('/');
         }
@@ -74,7 +76,10 @@ var WeppyEmber;
     function wrap(method) {
         var traceItem = getLastTraceItem();
         if (traceItem) {
-            (typeof traceItem.pattern === undefined) && (traceItem.klass = this.constructor.toString());
+            if (typeof traceItem.pattern === undefined) {
+                traceItem.klass = this.constructor.toString();
+            }
+            ;
             traceItem.method = method;
         }
         else {
@@ -82,9 +87,10 @@ var WeppyEmber;
         }
     }
     function wrapEvent(eventName, callback) {
+        var _this = this;
         if ('function' == typeof callback) {
             return decorate(callback, function () {
-                wrap.call(this, eventName);
+                wrap.call(_this, eventName);
             });
         }
         else {
@@ -116,7 +122,9 @@ var WeppyEmber;
     function ajaxDecorator() {
         if (getLastTraceItem()) {
             var request = arguments[1] || arguments[0], type = request.type || 'GET', url = request.url || arguments[0];
-            'string' == typeof request && (request = {});
+            if (typeof request === 'string') {
+                request = {};
+            }
             var tracer = new AjaxTrace(type, url);
             request.success = decorate(request.success, function () {
                 tracer.trace.resume();
@@ -164,7 +172,9 @@ var WeppyEmber;
             this.url = url;
             this.pending = true;
             this.trace = getLastTraceItem();
-            this.trace && this.trace.events.push(this);
+            if (this.trace) {
+                this.trace.events.push(this);
+            }
             this.startTime = Date.now();
             _super.call(this);
         }
@@ -179,7 +189,9 @@ var WeppyEmber;
             this.viewName = viewName;
             this.pending = true;
             this.trace = getLastTraceItem();
-            this.trace && this.trace.events.push(this);
+            if (this.trace) {
+                this.trace.events.push(this);
+            }
             this.startTime = Date.now();
             _super.call(this);
         }
@@ -205,7 +217,9 @@ var WeppyEmber;
         };
         Trace.prototype.pause = function () {
             for (var i = 1; i <= WeppyEmber.traceStack.length; i++) {
-                WeppyEmber.traceStack[WeppyEmber.traceStack.length - i] === this && WeppyEmber.traceStack.splice(WeppyEmber.traceStack.length - i, 1);
+                if (WeppyEmber.traceStack[WeppyEmber.traceStack.length - i] === this) {
+                    WeppyEmber.traceStack.splice(WeppyEmber.traceStack.length - i, 1);
+                }
             }
         };
         Trace.prototype.resume = function () {
@@ -249,9 +263,15 @@ var WeppyEmber;
                 duration: this.duration,
                 url: this.url
             };
-            this.klass && this.klass.length && (metrics.klass = this.klass);
-            this.method && this.method.length && (metrics.method = this.method);
-            this.pattern && this.pattern.length && (metrics.pattern = this.pattern);
+            if (this.klass && this.klass.length) {
+                metrics.klass = this.klass;
+            }
+            if (this.method && this.method.length) {
+                metrics.method = this.method;
+            }
+            if (this.pattern && this.pattern.length) {
+                metrics.pattern = this.pattern;
+            }
             var events = [];
             for (i = 0; i < this.events.length; i++) {
                 events.push(this.events[i].serialize(this.startTime));
@@ -301,12 +321,16 @@ var WeppyEmber;
                     var eventName, parent = this._super(props);
                     if (props._actions) {
                         for (eventName in props._actions) {
-                            props._actions.hasOwnProperty(eventName) && (props._actions[eventName] = wrapEvent(eventName, props._actions[eventName]));
+                            if (props._actions.hasOwnProperty(eventName)) {
+                                (props._actions[eventName] = wrapEvent(eventName, props._actions[eventName]));
+                            }
                         }
                     }
                     else if (props.events) {
                         for (eventName in props.events) {
-                            props.events.hasOwnProperty(eventName) && (props.events[eventName] = wrapEvent(eventName, props.events[eventName]));
+                            if (props.events.hasOwnProperty(eventName)) {
+                                (props.events[eventName] = wrapEvent(eventName, props.events[eventName]));
+                            }
                         }
                     }
                     return parent;
@@ -322,7 +346,9 @@ var WeppyEmber;
                     }
                 },
                 after: function (eventName, time, container, tracer) {
-                    tracer && tracer.stop();
+                    if (tracer) {
+                        tracer.stop();
+                    }
                 }
             });
             Ember.run.backburner.options.onEnd = decorate(Ember.run.backburner.options.onEnd, function (current, next) {
