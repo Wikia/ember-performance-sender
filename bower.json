@@ -1,16 +1,17 @@
 {
-  "name": "weppy-ember",
-  "main": "weppy-ember.js",
+  "name": "ember-performance-sender",
+  "main": "ember-performance-sender.js",
   "version": "0.0.1",
-  "homepage": "https://github.com/rogatty/weppy-ember",
+  "homepage": "https://github.com/Wikia/ember-performance-sender.git",
   "authors": [
-    "Igor Rogatty <igor@wikia-inc.com>"
+    "Igor Rogatty <igor@wikia-inc.com>",
+    "Kenneth Kouot <kenneth@wikia-inc.com"
   ],
   "moduleType": [
     "globals"
   ],
   "license": "MIT",
-  "private": true,
+  "private": false,
   "ignore": [
     "**/.*",
     "node_modules",

@@ -1,4 +1,4 @@
-module WeppyEmber {
+module EmPerfSender {
 	export interface MetricsReport {
 		startTime: number;
 		duration: number;
@@ -8,7 +8,7 @@ module WeppyEmber {
 		pattern?: string;
 	}
 
-	export interface WeppyEmberConfig {
+	export interface EmPerfSenderConfig {
 		enableAjaxFilter: boolean;
 		enableLogging: boolean;
 		error?: (message: string) => void;
@@ -22,7 +22,7 @@ module WeppyEmber {
 	export var VERSION: string = '0.1.0';
 	export var loaded: boolean = false;
 	export var enabled: boolean = false;
-	export var config: WeppyEmberConfig = {
+	export var config: EmPerfSenderConfig = {
 		enableAjaxFilter: false,
 		enableLogging: true,
 		minDuration: 50,
@@ -333,15 +333,15 @@ module WeppyEmber {
 		}
 	}
 
-	export function initialize (userConfig: WeppyEmberConfig, Ember = window['Ember'], $ = window['jQuery']) {
+	export function initialize (userConfig: EmPerfSenderConfig, Ember = window['Ember'], $ = window['jQuery']) {
 		'use strict';
 
 		if (Ember === undefined) {
-			throw ReferenceError('WeppyEmber cannot find Ember! Check that you have loaded Ember correctly before WeppyEmber!')
+			throw ReferenceError('EmPerfSender cannot find Ember! Check that you have loaded Ember correctly before EmPerfSender!')
 		} else if ($ === undefined) {
-			throw ReferenceError('WeppyEmber cannot find jQuery! Make sure you have loaded jQuery before Ember and WeppyEmber!');
+			throw ReferenceError('EmPerfSender cannot find jQuery! Make sure you have loaded jQuery before Ember and EmPerfSender!');
 		} else {
-			ifLoggingEnabled('log','Initializing weppy-ember v' + VERSION);
+			ifLoggingEnabled('log','Initializing EmPerfSender v' + VERSION);
 			config = $.extend(config, userConfig);
 
 			Ember.Route.reopen({
