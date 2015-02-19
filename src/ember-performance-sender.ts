@@ -293,11 +293,12 @@ module EmPerfSender {
 			if (config.enableAjaxFilter === true) {
 				var ajaxRequestToTrace = false;
 
-				for (i = 0; i < this.events.length; i++)
-					if (this.events[i] instanceof AjaxTrace) {
-						ajaxRequestToTrace = true;
-						break;
-					}
+				for (i = 0; i < this.events.length; i++) {
+						if (this.events[i] instanceof AjaxTrace) {
+							ajaxRequestToTrace = true;
+							break;
+						}
+				}
 
 				if (!ajaxRequestToTrace) {
 					ifLoggingEnabled('log', 'Dropped: ' + this.klass + '.' + this.method + ' (' + this.pattern + '), took ' +
