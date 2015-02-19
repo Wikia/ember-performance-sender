@@ -203,6 +203,9 @@ var EmPerfSender;
     var Trace = (function (_super) {
         __extends(Trace, _super);
         function Trace(klass, method, pattern) {
+            if (klass.match('Window')) {
+                throw TypeError(klass + ' is not a valid Trace class');
+            }
             this.klass = klass;
             this.method = method;
             this.pattern = pattern;
@@ -359,6 +362,7 @@ var EmPerfSender;
                 }
             });
             aliasMethodChain($, 'ajax', 'instrumentation', decorate($.ajax, ajaxDecorator));
+            EmPerfSender.loaded = true;
         }
     }
     EmPerfSender.initialize = initialize;
