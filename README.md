@@ -1,1 +1,1 @@
-# weppy-ember
+# Ember Performance Sender

@@ -1,10 +1,10 @@
 {
-  "name": "weppy-ember",
+  "name": "ember-performance-sender",
   "version": "0.0.1",
-  "description": "Client-side interface for Weppy performance monitoring tool",
+  "description": "Client-side interface for Weppy performance sendering tool",
   "repository": {
     "type": "git",
-    "url": "git://github.com/kenkouot/weppy-ember.git"
+    "url": "git://github.com/Wikia/ember-performance-sender.git"
   },
   "scripts": {
     "test": "node tests/qunit-runner.js"
