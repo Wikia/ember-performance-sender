@@ -93,7 +93,7 @@ module WeppyEmber {
 
 	function wrapEvent (eventName, callback) {
 		if ('function' == typeof callback) {
-			return decorate(callback, function () {
+			return decorate(callback, () => {
 				wrap.call(this, eventName);
 			});
 		} else {
@@ -126,7 +126,7 @@ module WeppyEmber {
 	}
 
 	function ajaxDecorator () {
-	if (getLastTraceItem()) {
+		if (getLastTraceItem()) {
 			var request = arguments[1] || arguments[0],
 				type = request.type || 'GET',
 				url = request.url || arguments[0];
