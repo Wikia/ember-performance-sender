@@ -249,11 +249,12 @@ var EmPerfSender;
             }
             if (EmPerfSender.config.enableAjaxFilter === true) {
                 var ajaxRequestToTrace = false;
-                for (i = 0; i < this.events.length; i++)
+                for (i = 0; i < this.events.length; i++) {
                     if (this.events[i] instanceof AjaxTrace) {
                         ajaxRequestToTrace = true;
                         break;
                     }
+                }
                 if (!ajaxRequestToTrace) {
                     ifLoggingEnabled('log', 'Dropped: ' + this.klass + '.' + this.method + ' (' + this.pattern + '), took ' + this.duration + 'ms. (enableAjaxFilter is true)');
                     return;
