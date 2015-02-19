@@ -17,10 +17,16 @@ App.initializer({
 ## Initialization Options
 `EmPerfSender` can be initialized with the following options:
 
-### `enableAjaxFilter: boolean (default: false)`
+#### `enableAjaxFilter: boolean` (default: false)
 If enabled, this will not call send for AJAX traces
 
-### enableLogging: boolean (default: true)
+#### `enableLogging: boolean` (default: true)
 Will turn on verbose logging.
 
-### `function error(message: string): void`
+#### `minDuration: number` (default: true)
+Minimum time to call `send()` on
+
+#### `function send(events, metrics): void` (optional)
+#### `function error(message): void` (optional)
+#### `function log(message): void` (optional)
+#### `function warn(message: string): void` (optional)
