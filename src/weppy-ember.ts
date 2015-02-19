@@ -16,6 +16,7 @@ module WeppyEmber {
 		minDuration: number;
 		send: (events: any[], metrics: MetricsReport) => void;
 		warn?: (message: string) => void;
+		subclassPattern: RegExp;
 	}
 
 	export var VERSION: string = '0.1.0';
@@ -28,20 +29,76 @@ module WeppyEmber {
 		log: (message) => { console.log(message); },
 		send: (events, metrics) => { console.log('Sending (Dry Run)\n============================\n', metrics); },
 		warn: (message) => { console.log('warn: ' + message); },
-		error: (message) => { console.log('error: ' + message); }
+		error: (message) => { console.log('error: ' + message); },
+		subclassPattern: new RegExp('<(?:\\(subclass of )?(.*?)\\)?:.*>')
 	};
 
-	var traceStack = [];
+	export var traceStack = [];
 
-	function getLastTraceItem () {
+	function getLastTraceItem ()  {
 		return traceStack[traceStack.length - 1];
 	}
 
-	function getConfigMethod (method, ...args) {
+	function getRoutePattern (EmberRoute) {
+		try {
+			var routeName = EmberRoute.get('routeName'),
+				segments = EmberRoute.get('router.router.recognizer.names')[routeName].segments,
+				listOfSegments = [];
+
+			for (var i = 0; i < segments.length; i++) {
+				var segment = null;
+				try {
+					segment = segments[i].generate();
+				} catch (err) {
+					segment = ':' + segments[i].name;
+				}
+				segment && listOfSegments.push(segment);
+			}
+			return '/' + listOfSegments.join('/');
+		} catch (err) {
+			return '/';
+		}
+	}
+
+	function traceRouteEvent () {
+		var pattern = getRoutePattern(this),
+			lastTrace = getLastTraceItem();
+
+		if (lastTrace) {
+			lastTrace.klass = this.constructor.toString();
+			lastTrace.method = undefined;
+			return lastTrace.pattern = pattern;
+		} else {
+			new Trace(this.constructor.toString(), undefined, pattern);
+			return this._super.apply(this, arguments);
+		}
+	}
+
+	function ifLoggingEnabled (method, ...args) {
 		if (config.enableLogging && typeof config[method] === 'function') {
 			return config[method].apply(this, args);
 		}
-		console.warn('Method ' + method + ' not found');
+	}
+
+	function wrap (method) {
+		var traceItem = getLastTraceItem();
+
+		if (traceItem) {
+			(typeof traceItem.pattern === undefined) && (traceItem.klass = this.constructor.toString());
+			traceItem.method = method;
+		} else {
+			new Trace(this.constructor.toString(), method);
+		}
+	}
+
+	function wrapEvent (eventName, callback) {
+		if ('function' == typeof callback) {
+			return decorate(callback, function () {
+				wrap.call(this, eventName);
+			});
+		} else {
+			return callback;
+		}
 	}
 
 	function decorate (orig, decorator) {
@@ -69,7 +126,7 @@ module WeppyEmber {
 	}
 
 	function ajaxDecorator () {
-		if (getLastTraceItem()) {
+	if (getLastTraceItem()) {
 			var request = arguments[1] || arguments[0],
 				type = request.type || 'GET',
 				url = request.url || arguments[0];
@@ -77,12 +134,12 @@ module WeppyEmber {
 			'string' == typeof request && (request = {});
 			var tracer = new AjaxTrace(type, url);
 
-			request.success = decorate(request.success, function () {
+			request.success = decorate(request.success, () => {
 				tracer.trace.resume();
 				tracer.stop();
 			});
 
-			request.error = decorate(request.error, function () {
+			request.error = decorate(request.error, () => {
 				tracer.trace.resume();
 				tracer.stop();
 			});
@@ -102,7 +159,7 @@ module WeppyEmber {
 				this.stopTime = Date.now();
 				this.pending = false;
 			} else {
-				getConfigMethod('warn', '[BUG] ' + this.constructor['name'] + ': Attempted to stop a view render twice.')
+				ifLoggingEnabled('warn', '[BUG] ' + this.constructor['name'] + ': Attempted to stop a view render twice.')
 			}
 		}
 
@@ -173,8 +230,8 @@ module WeppyEmber {
 			this.pattern = pattern;
 			this.events = [];
 			this.finalized = false;
-			traceStack.push(this);
 			this.startTime = Date.now();
+			traceStack.push(this);
 			super();
 		}
 
@@ -196,14 +253,16 @@ module WeppyEmber {
 
 		finalize () {
 			if (this.finalized) {
-				getConfigMethod('warn', '[BUG] Attempted to finalize a trace twice.');
+				ifLoggingEnabled('warn', '[BUG] Attempted to finalize a trace twice.');
 				return;
 			}
 
 			this.pause();
 
 			for (var i = 0; i < this.events.length; i++) {
-				if (this.events[i].pending) return;
+				if (this.events[i].pending) {
+					return;
+				}
 			}
 
 			this.stopTime = Date.now();
@@ -211,7 +270,7 @@ module WeppyEmber {
 			this.duration = this.stopTime - this.startTime;
 
 			if (this.duration < (config.minDuration || 1)) {
-				getConfigMethod('log', 'Dropped: ' + this.klass + '.' + this.method + ' (' + this.pattern + '), took ' +
+				ifLoggingEnabled('log', 'Dropped: ' + this.klass + '.' + this.method + ' (' + this.pattern + '), took ' +
 				this.duration + 'ms. (minDuration is ' + config.minDuration + 'ms)');
 				return;
 			}
@@ -222,17 +281,17 @@ module WeppyEmber {
 				for (i = 0; i < this.events.length; i++)
 					if (this.events[i] instanceof AjaxTrace) {
 						ajaxRequestToTrace = true;
-						break
+						break;
 					}
 
 				if (!ajaxRequestToTrace) {
-					getConfigMethod('log', 'Dropped: ' + this.klass + '.' + this.method + ' (' + this.pattern + '), took ' +
+					ifLoggingEnabled('log', 'Dropped: ' + this.klass + '.' + this.method + ' (' + this.pattern + '), took ' +
 					this.duration + 'ms. (enableAjaxFilter is true)');
 					return;
 				}
 			}
 
-			getConfigMethod('log', 'Sending: ' + this.klass + '.' + this.method + ' (' + this.pattern + '), took ' + this.duration +
+			ifLoggingEnabled('log', 'Sending: ' + this.klass + '.' + this.method + ' (' + this.pattern + '), took ' + this.duration +
 			'ms.');
 
 			this.url = window.location.hash || window.location.pathname;
@@ -264,42 +323,8 @@ module WeppyEmber {
 		} else if ($ === undefined) {
 			throw ReferenceError('WeppyEmber cannot find jQuery! Make sure you have loaded jQuery before Ember and WeppyEmber!');
 		} else {
-			getConfigMethod('log','Initializing weppy-ember v' + VERSION);
+			ifLoggingEnabled('log','Initializing weppy-ember v' + VERSION);
 			config = $.extend(config, userConfig);
-
-			var getRoutePattern = function (EmberRoute) {
-					try {
-						var routeName = EmberRoute.get('routeName'),
-							segments = EmberRoute.get('router.router.recognizer.names')[routeName].segments,
-							listOfSegments = [];
-
-						for (var i = 0; i < segments.length; i++) {
-							var segment = null;
-							try {
-								segment = segments[i].generate();
-							} catch (err) {
-								segment = ':' + segments[i].name;
-							}
-							segment && listOfSegments.push(segment);
-						}
-						return '/' + listOfSegments.join('/');
-					} catch (err) {
-						return '/';
-					}
-				},
-				traceRouteEvent = function () {
-					var pattern = getRoutePattern(this),
-						lastTrace = getLastTraceItem();
-
-					if (lastTrace) {
-						lastTrace.klass = this.constructor.toString();
-						lastTrace.method = void 0;
-						return lastTrace.pattern = pattern;
-					} else {
-						new Trace(this.constructor.toString(), void 0, pattern);
-						return this._super.apply(this, arguments);
-					}
-				};
 
 			Ember.Route.reopen({
 				beforeModel: traceRouteEvent,
@@ -319,20 +344,15 @@ module WeppyEmber {
 				 * @param {String} eventName The name of the event
 				 * @param {Object...} args Optional arguments to pass on
 				 */
-				trigger: function (eventName) {
+				trigger (eventName) {
 					var className = this.constructor.toString(),
 						isNotEmberClass = (
-						'Ember' !== className.substr(0, 5) &&
-							//(subclass of Ember...)
-						'Ember' !== className.substr(13, 5)),
-
-						// TODO this caused logging only for route transitions for me. why?
-						//isEvent = this.constructor.prototype.hasOwnProperty(eventName),
-						isEvent = true,
-
-						shouldTrace = !getLastTraceItem() &&
-							isNotEmberClass &&
-							isEvent;
+							'Ember' !== className.substr(0, 5) &&
+							// (subclass of Ember...)
+							'Ember' !== className.substr(13, 5)
+						),
+						isEvent = this.constructor.prototype.hasOwnProperty(eventName),
+						shouldTrace = isNotEmberClass && isEvent;
 
 					if (shouldTrace) {
 						new Trace(this.constructor.toString(), eventName);
@@ -342,28 +362,8 @@ module WeppyEmber {
 				}
 			});
 
-			var wrap = function (method) {
-					var traceItem = getLastTraceItem();
-
-					if (traceItem) {
-						'undefined' == typeof traceItem.pattern && (traceItem.klass = this.constructor.toString());
-						traceItem.method = method;
-					} else {
-						new Trace(this.constructor.toString(), method);
-					}
-				},
-				wrapEvent = function (eventName, callback) {
-					if ('function' == typeof callback) {
-						return decorate(callback, function () {
-							wrap.call(this, eventName);
-						});
-					} else {
-						return callback;
-					}
-				};
-
 			Ember.ActionHandler.reopen({
-				willMergeMixin: function (props) {
+				willMergeMixin (props) {
 					var eventName,
 						parent = this._super(props);
 
@@ -382,22 +382,21 @@ module WeppyEmber {
 				}
 			});
 
-			var subclassPattern = new RegExp('<(?:\\(subclass of )?(.*?)\\)?:.*>');
 			Ember.subscribe('render.view', {
-				before: function (eventName, time, container) {
+				before (eventName, time, container) {
 					if (getLastTraceItem()) {
-						var parentClass = container.object.match(subclassPattern)[1];
+						var parentClass = container.object.match(config.subclassPattern)[1];
 						if ('Ember' !== parentClass.substr(0, 5) && 'LinkView' !== parentClass) {
 							return new ViewRenderTrace(parentClass);
 						}
 					}
 				},
-				after: function (eventName, time, container, tracer) {
+				after (eventName, time, container, tracer) {
 					tracer && tracer.stop();
 				}
 			});
 
-			Ember.run.backburner.options.onEnd = decorate(Ember.run.backburner.options.onEnd, function (current, next) {
+			Ember.run.backburner.options.onEnd = decorate(Ember.run.backburner.options.onEnd, (current, next) => {
 				if (!next && traceStack.length) {
 					for (var d = 0; d < traceStack.length; d++) {
 						traceStack[d].finalize();
