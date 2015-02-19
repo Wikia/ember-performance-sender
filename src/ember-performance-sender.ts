@@ -236,6 +236,9 @@ module EmPerfSender {
 		url: string;
 
 		constructor (klass, method, pattern?) {
+            if (klass.match('Window')) {
+                throw TypeError(klass + ' is not a valid Trace class');
+            }
 			this.klass = klass;
 			this.method = method;
 			this.pattern = pattern;
@@ -427,6 +430,7 @@ module EmPerfSender {
 			});
 
 			aliasMethodChain($, 'ajax', 'instrumentation', decorate($.ajax, ajaxDecorator));
+            loaded = true;
 		}
 	};
 }
