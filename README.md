@@ -29,4 +29,4 @@ Minimum time to call `send()` on
 #### `function send(events, metrics): void` (optional)
 #### `function error(message): void` (optional)
 #### `function log(message): void` (optional)
-#### `function warn(message: string): void` (optional)
+#### `function warn(message) void` (optional)
