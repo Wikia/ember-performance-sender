@@ -1,0 +1,20 @@
+{
+  "name": "weppy-ember",
+  "main": "weppy-ember.js",
+  "version": "0.0.1",
+  "homepage": "https://github.com/rogatty/weppy-ember",
+  "authors": [
+    "Igor Rogatty <igor@wikia-inc.com>"
+  ],
+  "moduleType": [
+    "globals"
+  ],
+  "license": "MIT",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "test",
+    "tests"
+  ]
+}
