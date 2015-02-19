@@ -52,7 +52,10 @@ module WeppyEmber {
 				} catch (err) {
 					segment = ':' + segments[i].name;
 				}
-				segment && listOfSegments.push(segment);
+
+				if (segment) {
+					listOfSegments.push(segment);
+				}
 			}
 			return '/' + listOfSegments.join('/');
 		} catch (err) {
@@ -84,7 +87,9 @@ module WeppyEmber {
 		var traceItem = getLastTraceItem();
 
 		if (traceItem) {
-			(typeof traceItem.pattern === undefined) && (traceItem.klass = this.constructor.toString());
+			if (typeof traceItem.pattern === undefined) {
+				traceItem.klass = this.constructor.toString();
+			};
 			traceItem.method = method;
 		} else {
 			new Trace(this.constructor.toString(), method);
@@ -131,7 +136,9 @@ module WeppyEmber {
 				type = request.type || 'GET',
 				url = request.url || arguments[0];
 
-			'string' == typeof request && (request = {});
+			if (typeof request === 'string') {
+				request = {};
+			}
 			var tracer = new AjaxTrace(type, url);
 
 			request.success = decorate(request.success, () => {
@@ -183,7 +190,9 @@ module WeppyEmber {
 			this.url = url;
 			this.pending = true;
 			this.trace = getLastTraceItem();
-			this.trace && this.trace.events.push(this);
+			if (this.trace) {
+				this.trace.events.push(this);
+			}
 			this.startTime = Date.now();
 
 			super();
@@ -201,7 +210,9 @@ module WeppyEmber {
 			this.viewName = viewName;
 			this.pending = true;
 			this.trace = getLastTraceItem();
-			this.trace && this.trace.events.push(this);
+			if (this.trace) {
+				this.trace.events.push(this);
+			}
 			this.startTime = Date.now();
 
 			super();
@@ -241,8 +252,9 @@ module WeppyEmber {
 
 		pause () {
 			for (var i = 1; i <= traceStack.length; i++) {
-				traceStack[traceStack.length - i] === this &&
-				traceStack.splice(traceStack.length - i, 1);
+				if (traceStack[traceStack.length - i] === this) {
+					traceStack.splice(traceStack.length - i, 1);
+				}
 			}
 		}
 
@@ -302,9 +314,15 @@ module WeppyEmber {
 				url: this.url
 			};
 
-			this.klass && this.klass.length && (metrics.klass = this.klass);
-			this.method && this.method.length && (metrics.method = this.method);
-			this.pattern && this.pattern.length && (metrics.pattern = this.pattern);
+			if (this.klass && this.klass.length) {
+				metrics.klass = this.klass;
+			}
+			if (this.method && this.method.length) {
+				metrics.method = this.method;
+			}
+			if (this.pattern && this.pattern.length) {
+				metrics.pattern = this.pattern;
+			}
 
 			var events = [];
 			for (i = 0; i < this.events.length; i++) {
@@ -369,13 +387,15 @@ module WeppyEmber {
 
 					if (props._actions) {
 						for (eventName in props._actions) {
-							props._actions.hasOwnProperty(eventName) &&
+						if (props._actions.hasOwnProperty(eventName)) {
 							(props._actions[eventName] = wrapEvent(eventName, props._actions[eventName]));
+						}
 						}
 					} else if (props.events) {
 						for (eventName in props.events) {
-							props.events.hasOwnProperty(eventName) &&
-							(props.events[eventName] = wrapEvent(eventName, props.events[eventName]));
+							if (props.events.hasOwnProperty(eventName)) {
+								(props.events[eventName] = wrapEvent(eventName, props.events[eventName]));
+							}
 						}
 					}
 					return parent;
@@ -392,7 +412,9 @@ module WeppyEmber {
 					}
 				},
 				after (eventName, time, container, tracer) {
-					tracer && tracer.stop();
+					if (tracer) {
+						tracer.stop();
+					}
 				}
 			});
 
