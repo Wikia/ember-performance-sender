@@ -32,4 +32,4 @@ Minimum time to call `send()` on
 #### `function warn(message) void` (optional)
 
 ## Attribution
-The was originally based on a fork of [Caliper's Ember adapter](https://github.com/caliper-io/caliper-ember-dist), but has since been heavily modified.
+The was originally based on a fork of [Caliper's Ember adapter](https://github.com/caliper-io/caliper-ember-dist), but has since been heavily modified. Original library by [Godfrey Chan](https://twitter.com/chancancode).
