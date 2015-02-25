@@ -1,6 +1,6 @@
 {
   "name": "ember-performance-sender",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Client-side interface for Weppy performance sendering tool",
   "repository": {
     "type": "git",

@@ -1,14 +1,16 @@
 {
   "name": "ember-performance-sender",
   "main": "ember-performance-sender.js",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "homepage": "https://github.com/Wikia/ember-performance-sender.git",
   "authors": [
     "Igor Rogatty <igor@wikia-inc.com>",
     "Kenneth Kouot <kenneth@wikia-inc.com"
   ],
   "moduleType": [
-    "globals"
+    "globals",
+    "node",
+    "amd"
   ],
   "license": "MIT",
   "private": false,
