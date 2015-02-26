@@ -23,7 +23,7 @@ If enabled, this will not call send for AJAX traces
 #### `enableLogging: boolean` (default: true)
 Will turn on verbose logging.
 
-#### `minDuration: number` (default: true)
+#### `minDuration: number` (default: 50)
 Minimum time to call `send()` on
 
 #### `function send(events, metrics): void` (optional)
