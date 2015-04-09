@@ -19,5 +19,8 @@
     "node_modules",
     "test",
     "tests"
-  ]
+  ],
+  "devDependencies": {
+    "ember": "~1.11.1"
+  }
 }
