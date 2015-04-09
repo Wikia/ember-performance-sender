@@ -56,13 +56,13 @@ var EmPerfSender;
         var pattern = getRoutePattern(this), lastTrace = getLastTraceItem();
         if (lastTrace) {
             lastTrace.klass = this.constructor.toString();
-            lastTrace.method = undefined;
-            return lastTrace.pattern = pattern;
+            lastTrace.method = 'routeTransition';
+            lastTrace.pattern = pattern;
         }
         else {
-            new Trace(this.constructor.toString(), undefined, pattern);
-            return this._super.apply(this, arguments);
+            new Trace(this.constructor.toString(), 'routeTransition', pattern);
         }
+        return this._super.apply(this, arguments);
     }
     function ifLoggingEnabled(method) {
         var args = [];
