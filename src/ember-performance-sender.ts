@@ -346,8 +346,8 @@ module EmPerfSender {
 		} else if ($ === undefined) {
 			throw ReferenceError('EmPerfSender cannot find jQuery! Make sure you have loaded jQuery before Ember and EmPerfSender!');
 		} else {
-			ifLoggingEnabled('log','Initializing EmPerfSender v' + VERSION);
 			config = $.extend(config, userConfig);
+			ifLoggingEnabled('log','Initializing EmPerfSender v' + VERSION);
 
 			Ember.Route.reopen({
 				beforeModel: traceRouteEvent,
