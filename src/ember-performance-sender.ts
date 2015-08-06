@@ -19,7 +19,7 @@ module EmPerfSender {
 		subclassPattern: RegExp;
 	}
 
-	export var VERSION: string = '1.2.1';
+	export var VERSION: string = '1.1.1';
 	export var loaded: boolean = false;
 	export var enabled: boolean = false;
 	export var config: EmPerfSenderConfig = {

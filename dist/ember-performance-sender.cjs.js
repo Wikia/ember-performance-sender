@@ -1,4 +1,4 @@
-var __extends = this.__extends || function (d, b) {
+var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
     __.prototype = b.prototype;
@@ -6,25 +6,17 @@ var __extends = this.__extends || function (d, b) {
 };
 var EmPerfSender;
 (function (EmPerfSender) {
-    EmPerfSender.VERSION = '0.1.0';
+    EmPerfSender.VERSION = '1.1.1';
     EmPerfSender.loaded = false;
     EmPerfSender.enabled = false;
     EmPerfSender.config = {
         enableAjaxFilter: false,
         enableLogging: true,
         minDuration: 50,
-        log: function (message) {
-            console.log(message);
-        },
-        send: function (events, metrics) {
-            console.log('Sending (Dry Run)\n============================\n', metrics);
-        },
-        warn: function (message) {
-            console.log('warn: ' + message);
-        },
-        error: function (message) {
-            console.log('error: ' + message);
-        },
+        log: function (message) { console.log(message); },
+        send: function (events, metrics) { console.log('Sending (Dry Run)\n============================\n', metrics); },
+        warn: function (message) { console.log('warn: ' + message); },
+        error: function (message) { console.log('error: ' + message); },
         subclassPattern: new RegExp('<(?:\\(subclass of )?(.*?)\\)?:.*>')
     };
     EmPerfSender.traceStack = [];
@@ -106,8 +98,7 @@ var EmPerfSender;
             catch (e) {
                 throw e;
             }
-            return (typeof orig === 'function' ? orig : function () {
-            }).apply(this, arguments);
+            return (typeof orig === 'function' ? orig : function () { }).apply(this, arguments);
         };
     }
     function aliasMethodChain($, method, label, wrapper) {
@@ -244,7 +235,8 @@ var EmPerfSender;
             this.finalized = true;
             this.duration = this.stopTime - this.startTime;
             if (this.duration < (EmPerfSender.config.minDuration || 1)) {
-                ifLoggingEnabled('log', 'Dropped: ' + this.klass + '.' + this.method + ' (' + this.pattern + '), took ' + this.duration + 'ms. (minDuration is ' + EmPerfSender.config.minDuration + 'ms)');
+                ifLoggingEnabled('log', 'Dropped: ' + this.klass + '.' + this.method + ' (' + this.pattern + '), took ' +
+                    this.duration + 'ms. (minDuration is ' + EmPerfSender.config.minDuration + 'ms)');
                 return;
             }
             if (EmPerfSender.config.enableAjaxFilter === true) {
@@ -256,11 +248,13 @@ var EmPerfSender;
                     }
                 }
                 if (!ajaxRequestToTrace) {
-                    ifLoggingEnabled('log', 'Dropped: ' + this.klass + '.' + this.method + ' (' + this.pattern + '), took ' + this.duration + 'ms. (enableAjaxFilter is true)');
+                    ifLoggingEnabled('log', 'Dropped: ' + this.klass + '.' + this.method + ' (' + this.pattern + '), took ' +
+                        this.duration + 'ms. (enableAjaxFilter is true)');
                     return;
                 }
             }
-            ifLoggingEnabled('log', 'Sending: ' + this.klass + '.' + this.method + ' (' + this.pattern + '), took ' + this.duration + 'ms.');
+            ifLoggingEnabled('log', 'Sending: ' + this.klass + '.' + this.method + ' (' + this.pattern + '), took ' + this.duration +
+                'ms.');
             this.url = window.location.hash || window.location.pathname;
             var metrics = {
                 startTime: this.startTime,
@@ -295,8 +289,8 @@ var EmPerfSender;
             throw ReferenceError('EmPerfSender cannot find jQuery! Make sure you have loaded jQuery before Ember and EmPerfSender!');
         }
         else {
-            ifLoggingEnabled('log', 'Initializing EmPerfSender v' + EmPerfSender.VERSION);
             EmPerfSender.config = $.extend(EmPerfSender.config, userConfig);
+            ifLoggingEnabled('log', 'Initializing EmPerfSender v' + EmPerfSender.VERSION);
             Ember.Route.reopen({
                 beforeModel: traceRouteEvent,
                 afterModel: traceRouteEvent,
@@ -313,7 +307,9 @@ var EmPerfSender;
                  * @param {Object...} args Optional arguments to pass on
                  */
                 trigger: function (eventName) {
-                    var className = this.constructor.toString(), isNotEmberClass = ('Ember' !== className.substr(0, 5) && 'Ember' !== className.substr(13, 5)), isEvent = this.constructor.prototype.hasOwnProperty(eventName), shouldTrace = isNotEmberClass && isEvent;
+                    var className = this.constructor.toString(), isNotEmberClass = ('Ember' !== className.substr(0, 5) &&
+                        // (subclass of Ember...)
+                        'Ember' !== className.substr(13, 5)), isEvent = this.constructor.prototype.hasOwnProperty(eventName), shouldTrace = isNotEmberClass && isEvent;
                     if (shouldTrace) {
                         new Trace(this.constructor.toString(), eventName);
                     }
