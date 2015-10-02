@@ -1,8 +1,7 @@
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
-    __.prototype = b.prototype;
-    d.prototype = new __();
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
 var EmPerfSender;
 (function (EmPerfSender) {
@@ -137,7 +136,7 @@ var EmPerfSender;
                 this.pending = false;
             }
             else {
-                ifLoggingEnabled('warn', '[BUG] ' + this.constructor['name'] + ': Attempted to stop a view render twice.');
+                ifLoggingEnabled('warn', '[BUG] ' + this.constructor['name'] + ': Attempted to stop a component render twice.');
             }
         };
         BaseTrace.prototype.serialize = function (time) {
@@ -174,10 +173,10 @@ var EmPerfSender;
         };
         return AjaxTrace;
     })(BaseTrace);
-    var ViewRenderTrace = (function (_super) {
-        __extends(ViewRenderTrace, _super);
-        function ViewRenderTrace(viewName) {
-            this.viewName = viewName;
+    var ComponentRenderTrace = (function (_super) {
+        __extends(ComponentRenderTrace, _super);
+        function ComponentRenderTrace(componentName) {
+            this.componentName = componentName;
             this.pending = true;
             this.trace = getLastTraceItem();
             if (this.trace) {
@@ -186,10 +185,10 @@ var EmPerfSender;
             this.startTime = Date.now();
             _super.call(this);
         }
-        ViewRenderTrace.prototype.serialize = function (time) {
-            return _super.prototype.serialize.call(this, time, this.viewName);
+        ComponentRenderTrace.prototype.serialize = function (time) {
+            return _super.prototype.serialize.call(this, time, this.componentName);
         };
-        return ViewRenderTrace;
+        return ComponentRenderTrace;
     })(BaseTrace);
     var Trace = (function (_super) {
         __extends(Trace, _super);
@@ -296,7 +295,7 @@ var EmPerfSender;
                 afterModel: traceRouteEvent,
                 enter: traceRouteEvent
             });
-            Ember.CoreView.reopen({
+            Ember.Component.reopen({
                 /**
                  * Triggers a named event for the object. Any additional arguments
                  * will be passed as parameters to the functions that are subscribed to the
@@ -340,8 +339,8 @@ var EmPerfSender;
                 before: function (eventName, time, container) {
                     if (getLastTraceItem()) {
                         var parentClass = container.object.match(EmPerfSender.config.subclassPattern)[1];
-                        if ('Ember' !== parentClass.substr(0, 5) && 'LinkView' !== parentClass) {
-                            return new ViewRenderTrace(parentClass);
+                        if ('Ember' !== parentClass.substr(0, 5) && 'LinkComponent' !== parentClass) {
+                            return new ComponentRenderTrace(parentClass);
                         }
                     }
                 },

@@ -167,7 +167,7 @@ module EmPerfSender {
 				this.stopTime = Date.now();
 				this.pending = false;
 			} else {
-				ifLoggingEnabled('warn', '[BUG] ' + this.constructor['name'] + ': Attempted to stop a view render twice.')
+				ifLoggingEnabled('warn', '[BUG] ' + this.constructor['name'] + ': Attempted to stop a component render twice.')
 			}
 		}
 
@@ -204,11 +204,11 @@ module EmPerfSender {
 		}
 	}
 
-	class ViewRenderTrace extends BaseTrace {
-		viewName: string;
+	class ComponentRenderTrace extends BaseTrace {
+		componentName: string;
 
-		constructor (viewName) {
-			this.viewName = viewName;
+		constructor (componentName) {
+			this.componentName = componentName;
 			this.pending = true;
 			this.trace = getLastTraceItem();
 			if (this.trace) {
@@ -220,7 +220,7 @@ module EmPerfSender {
 		}
 
 		serialize (time: number): any[] {
-			return super.serialize(time, this.viewName);
+			return super.serialize(time, this.componentName);
 		}
 	}
 
@@ -357,7 +357,7 @@ module EmPerfSender {
 				//setup: traceRouteEvent
 			});
 
-			Ember.CoreView.reopen({
+			Ember.Component.reopen({
 				/**
 				 * Triggers a named event for the object. Any additional arguments
 				 * will be passed as parameters to the functions that are subscribed to the
@@ -411,8 +411,8 @@ module EmPerfSender {
 				before (eventName, time, container) {
 					if (getLastTraceItem()) {
 						var parentClass = container.object.match(config.subclassPattern)[1];
-						if ('Ember' !== parentClass.substr(0, 5) && 'LinkView' !== parentClass) {
-							return new ViewRenderTrace(parentClass);
+						if ('Ember' !== parentClass.substr(0, 5) && 'LinkComponent' !== parentClass) {
+							return new ComponentRenderTrace(parentClass);
 						}
 					}
 				},
